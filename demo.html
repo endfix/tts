@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style>
+        .container {
+            width: 100%;
+            max-width: 500px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <fieldset>
+            <legend style="margin: 0 auto">Text to Speech</legend>
+            <label for="tts-voices">Voice:
+                <select id="tts-voices">
+                    <option>no selected</option>
+                </select>
+            </label>
+            <hr>
+            <label for="tts-volume">Volume:
+                <input id="tts-volume" type="range" min="0" max="1" step="0.1" value="1">
+                <input id="tts-volume-value" type="text" disabled value="1">
+            </label>
+            <hr>
+            <label for="tts-pitch">Pitch:
+                <input id="tts-pitch" type="range" min="0" max="2" step="1" value="1">
+                <input id="tts-pitch-value" type="text" disabled value="1">
+            </label>
+            <hr>
+            <label for="tts-rate">Rate:
+                <input id="tts-rate" type="range" min="0.1" max="10" step="0.1" value="1">
+                <input id="tts-rate-value" type="text" disabled value="1">
+            </label>
+            <hr>
+            <label for="tts-text">Text:
+                <textarea id="tts-text" style="width: 100%; height: 300px;">Съешь ещё этих мягких французских булок, да выпей же чаю.</textarea>
+            </label>
+            <hr>
+            <button onclick="speak()" style="width: 100%;">speak</button>
+            <hr>
+            <label for="tts-events">Events:
+                <textarea id="tts-events" style="width: 100%; height: 300px;"></textarea>
+            </label>
+        </fieldset>
+    </div>
+<script type="module">
+    import TTS from './tts.js';
+
+    const tts = new TTS();
+    await tts.initializeAsync();
+
+    const volumeSelector = document.querySelector('#tts-volume');
+    const volumeValueSelector = document.querySelector('#tts-volume-value');
+
+    const pitchSelector = document.querySelector('#tts-pitch');
+    const pitchValueSelector = document.querySelector('#tts-pitch-value');
+
+    const rateSelector = document.querySelector('#tts-rate');
+    const rateValueSelector = document.querySelector('#tts-rate-value');
+
+    volumeSelector.value = volumeValueSelector.value = tts.volume = localStorage.getItem('tts-volume') ?? 1;
+    volumeSelector.addEventListener('input', (e) => {
+        localStorage.setItem('tts-volume', volumeValueSelector.value = tts.volume = e.target.value)
+    });
+
+    pitchSelector.value = pitchValueSelector.value = tts.pitch = localStorage.getItem('tts-pitch') ?? 1;
+    pitchSelector.addEventListener('input', (e) => {
+        localStorage.setItem('tts-pitch', pitchValueSelector.value = tts.pitch = e.target.value)
+    });
+
+    rateSelector.value = rateValueSelector.value = tts.rate = localStorage.getItem('tts-rate') ?? 1;
+    rateSelector.addEventListener('input', (e) => {
+        localStorage.setItem('tts-rate', rateValueSelector.value = tts.rate = e.target.value)
+    });
+
+    const voicesSelector = document.querySelector('#tts-voices');
+    voicesSelector.addEventListener('change', (e) => {
+        const voice = tts.getVoices().find(voice => voice.voiceURI === e.target.value);
+        if (voice) {
+            tts.cancel();
+            tts.voice = voice;
+            tts.lang = voice.lang;
+        }
+    })
+
+    const voices = tts.getVoices();
+    voices.forEach(voice => {
+        const option = document.createElement('option');
+        option.textContent = voice.name;
+        option.value = voice.voiceURI;
+
+        voicesSelector.appendChild(option);
+    });
+
+    function speak() {
+        const textSelector = document.querySelector('#tts-text');
+        tts.text = textSelector.value
+
+        tts.speak()
+    }
+    window.speak = speak;
+
+    const eventsSelector = document.querySelector('#tts-events');
+
+    tts.onVoicesChanged((e) => {
+        console.info(e)
+        eventsSelector.value += 'onVoicesChanged: ' + JSON.stringify(e) + "\n";
+    });
+
+    tts.onBoundary((e) => eventLog('onBoundary', e));
+    tts.onEnd((e) => eventLog('onEnd', e));
+    tts.onError((e) => eventLog('onError', e));
+    tts.onMark((e) => eventLog('onMark', e));
+    tts.onPause((e) => eventLog('onPause', e));
+    tts.onResume((e) => eventLog('onResume', e));
+    tts.onStart((e) => eventLog('onStart', e));
+
+    function eventLog(eventName, e) {
+        eventsSelector.value += `${eventName}: { charIndex: ${e.charIndex}, elapsedTime: ${e.elapsedTime}`;
+        if (e.error) {
+            eventsSelector.value += `, error: ${e.error}`;
+        }
+        eventsSelector.value += `, name: ${e.name} }\n`;
+    }
+</script>
+</body>
+</html>
